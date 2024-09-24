@@ -17,11 +17,11 @@
 
 \func sort {A : \Type} (cmp : A -> A -> Bool) (xs : List A) : List A \elim xs
   | nil => nil
-  | a :: l => insert cmp a $ sort cmp l
+  | a :: l => insert a $ sort cmp l
   \where {
-    \func insert {A : \Type} (cmp : A -> A -> Bool) (e : A) (xs : List A) : List A \elim xs
+    \func insert (e : A) (xs : List A) : List A \elim xs
       | nil => e :: nil
-      | a :: xs \as l => if (cmp e a) (e :: l) (a :: insert cmp e xs)
+      | a :: xs \as l => if (cmp e a) (e :: l) (a :: insert e xs)
   }
 
 \func \infix 4 < (_ _ : Nat) : Bool

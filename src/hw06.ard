@@ -1,12 +1,20 @@
+\import Arith.Nat (pred)
 \import Data.Bool
-\import Data.List (List, length)
+\import Data.List (List, length, ::, nil)
+\import Function.Meta
 \import Logic
+\import Meta
+\import Paths
+\import Paths.Meta
+\import lect05 (funExt)
 \import lect06
 \open Nat(+,*)
 
 -- 1. Определите предикат принадлежности элемента списку.
 
-\data In {A : \Type} (a : A) (xs : List A)
+\data In {A : \Type} (a : A) (xs : List A) \with
+  | a, b :: _ => in-first (a = b)
+  | a, b :: l => in-step (In a l)
 
 -- Optional:
 -- 2. Докажите эквивалентность четырех различных определений LessOrEq: lessOrEq, lessOrEq', LessOrEq и LessOrEq'.
@@ -15,6 +23,8 @@
 --    То есть ReflTransClosure R -- это минимальное рефлексивное и транзитивное отношение, содержащее R.
 
 \data ReflTransClosure {A : \Type} (R : A -> A -> \Type) (x y : A)
+  | RTC-refl (x = y)
+  | RTC-trans (\Sigma (z : A) (\Sigma (R x z) (R z y)))
 
 -- 4. Докажите, что если R уже рекфлексивно и транзитивно, то ReflTransClosure R эквивалентно R.
 
@@ -22,18 +32,51 @@
 
 \func ReflTransClosure-lem {A : \Type} (R : A -> A -> \Type) (refl : \Pi (x : A) -> R x x) (trans : \Pi (x y z : A) -> R x y -> R y z -> R x z)
   : \Pi (x y : A) -> R x y <-> ReflTransClosure R x y
-  => {?}
+  => \lam x y => (
+      \lam r => RTC-trans (x, (refl x, r)),
+      \lam r => \case \elim r \with {
+        | RTC-refl p => rewrite p $ refl y
+        | RTC-trans (z, (rxz, rzy)) => trans x z y rxz rzy
+      }
+    )
 
 -- 5. Определите предикат Sublist xs ys на списках, означающий "список xs является подсписком ys".
 
+\data SubList {A : \Type} (xs ys : List A) \with
+  | nil, _ => SL-empty
+  | a :: xs, b :: ys => SL-step (a = b) (SubList xs ys)
+  | xs, b :: ys => SL-skip (SubList xs ys)
+
 -- 6. Докажите, что Sublist (filter p xs) xs для любых p и xs.
+
+\func filter-is-sublist {A : \Type} (p : A -> Bool) (xs : List A) : SubList (filter p xs) xs \elim xs
+  | nil => SL-empty
+  | a :: xs => cases(p a) \with {
+    | true => SL-step idp $ filter-is-sublist p xs
+    | false => SL-skip $ filter-is-sublist p xs
+  }
 
 -- 7. Определите filter через if, а не через \case.
 --     Докажите для этой версии filter лемму filter-lem.
 
-\func filter' {A : \Type} (p : A -> Bool) (xs : List A) : List A => {?}
+\func filter' {A : \Type} (p : A -> Bool) (xs : List A) : List A \elim xs
+  | nil => nil
+  | a :: xs \as l => if (p a) l xs
 
-\func filter-lem {A : \Type} (p : A -> Bool) (xs : List A) : LessOrEq (length (filter' p xs)) (length xs) => {?}
+\func leq-refl {a : Nat} : LessOrEq a a \elim a
+  | 0 => zero<=_
+  | suc a => suc<=suc $ leq-refl
+
+\func leq-step {a : Nat} : LessOrEq a (suc a) \elim a
+  | 0 => zero<=_
+  | suc a => suc<=suc $ leq-step
+
+\func filter-lem {A : \Type} (p : A -> Bool) (xs : List A) : LessOrEq (length (filter' p xs)) (length xs) \elim xs
+  | nil => zero<=_
+  | a :: xs => cases(p a) \with {
+    | false => leq-step
+    | true => leq-refl
+  }
 
 -- 8. Закончите определение функции \func BoolFuncLem (f : Bool -> Bool) (x : Bool) : f (f (f x)) = f x из лекции.
 
@@ -41,18 +84,57 @@
 
 \func isEven (n : Nat) => \Sigma (k : Nat) (n = 2 * k)
 
-\func isEven-dec : DecPred isEven => {?}
+\func isEven-dec : DecPred isEven
+  => aux
+  \where {
+    \func aux (n : Nat) : Decide (isEven n)
+      | 0 => yes (0, idp)
+      | 1 => no \lam (k, p) => cases (k, p) \with {
+        | 0, ()
+      }
+      | suc (suc n) => cases (aux n) \with {
+        | yes (k, p) => yes (suc k, pmap suc $ pmap suc p)
+        | no p => no \lam t => p $ \case \elim t \with {
+          | (suc k, p') => (k, pmap pred $ pmap pred p')
+          | (0, p') => \case p'
+        }
+      }
+  }
 
 -- 10. Докажите, что функции FromBoolToDec и FromDecToBool взаимно обратны.
 
-\func bdb {A : \Type} (p : A -> Bool) : FromDecToBool (FromBoolToDec p) = p => {?}
+\func bdb {A : \Type} (p : A -> Bool) : FromDecToBool (FromBoolToDec p) = p
+  => funExt (\lam _ => Bool) \lam a => \case p a \as r \return (\case So-dec {r} \with {
+    | yes _ => true
+    | no _ => false
+  }) = r \with {
+    | false => idp
+    | true => idp
+  }
 
 -- Мы не можем доказать, что FromBoolToDec (FromDecToBool P) = P, но мы можем доказать более слабое утверждение: эти предикаты логически эквивалентны.
 -- Для этого введем эквивалентность предикатов.
 
 \func dbd {A : \Type} (P : \Sigma (P : A -> \Type) (DecPred P))
   : \Pi (x : A) -> (FromBoolToDec (FromDecToBool P)).1 x <-> P.1 x
-  => {?}
+  => \lam x => (
+    \case P.2 x \as r \return (So (\case r \with {
+      | yes _ => true
+      | no _ => false
+    }
+    ) -> P.1 x) \with {
+      | yes a => \lam _ => a
+      | no _ => \lam x => \case x
+    },
+    \lam p1x => \case P.2 x \as r \return So (\case r \with {
+          | yes _ => true
+          | no _ => false
+        }
+      ) \with {
+      | yes a => ()
+      | no n => \case n p1x
+    }
+  )
 
 -- Optional:
 -- 11. Парадокс Рассела показывает, что не существует множества всех множеств.
@@ -65,4 +147,4 @@
 -- Это легко доказать при помощи исключенного третьего, но утверждение верно и без него.
 -- Докажите этот факт.
 \func contrProp {A : \Type} (p : A -> Not A) (q : Not A -> A) : Empty
-  => {?}
+  => \let t => q $ \lam a => p a a \in p t t

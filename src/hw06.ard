@@ -114,13 +114,7 @@
 -- 10. Докажите, что функции FromBoolToDec и FromDecToBool взаимно обратны.
 
 \func bdb {A : \Type} (p : A -> Bool) : FromDecToBool (FromBoolToDec p) = p
-  => funExt (\lam _ => Bool) \lam a => \case p a \as r \return (\case So-dec {r} \with {
-    | yes _ => true
-    | no _ => false
-  }) = r \with {
-    | false => idp
-    | true => idp
-  }
+  => ext \lam a => unfold (FromBoolToDec, FromDecToBool) $ cases(p a) idp
 
 -- Мы не можем доказать, что FromBoolToDec (FromDecToBool P) = P, но мы можем доказать более слабое утверждение: эти предикаты логически эквивалентны.
 -- Для этого введем эквивалентность предикатов.

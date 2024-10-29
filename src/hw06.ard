@@ -80,6 +80,16 @@
 
 -- 8. Закончите определение функции \func BoolFuncLem (f : Bool -> Bool) (x : Bool) : f (f (f x)) = f x из лекции.
 
+\func BoolFuncLem (f : Bool -> Bool) (x : Bool) : f (f (f x)) = f x
+  => cases(x arg addPath, f true arg addPath, f false arg addPath) \with {
+    | false, _, _, p, false, q => rewrite q $ rewrite q q
+    | false, _, false, p, true, q => rewrite q $ rewrite p q
+    | false, _, true, p, true, q => rewrite q $ rewrite p p
+    | true, _, false, p, false, q => rewrite p $ rewrite q q
+    | true, -, false, p, true, q => rewrite p $ rewrite q p
+    | true, -, true, p, _, q => rewrite p $ rewrite p p
+  }
+
 -- 9. Докажите, что предикат isEven разрешим.
 
 \func isEven (n : Nat) => \Sigma (k : Nat) (n = 2 * k)

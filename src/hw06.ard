@@ -24,7 +24,8 @@
 
 \data ReflTransClosure {A : \Type} (R : A -> A -> \Type) (x y : A)
   | RTC-refl (x = y)
-  | RTC-trans (\Sigma (z : A) (\Sigma (R x z) (R z y)))
+  | RTC-trans {z : A} (ReflTransClosure R x z) (ReflTransClosure R z y)
+  | RTC-default (R x y)
 
 -- 4. Докажите, что если R уже рекфлексивно и транзитивно, то ReflTransClosure R эквивалентно R.
 
@@ -32,13 +33,13 @@
 
 \func ReflTransClosure-lem {A : \Type} (R : A -> A -> \Type) (refl : \Pi (x : A) -> R x x) (trans : \Pi (x y z : A) -> R x y -> R y z -> R x z)
   : \Pi (x y : A) -> R x y <-> ReflTransClosure R x y
-  => \lam x y => (
-      \lam r => RTC-trans (x, (refl x, r)),
-      \lam r => \case \elim r \with {
-        | RTC-refl p => rewrite p $ refl y
-        | RTC-trans (z, (rxz, rzy)) => trans x z y rxz rzy
-      }
-    )
+  => \lam _ _ => (RTC-default, aux)
+  \where {
+    \func aux {x y : A} (r : ReflTransClosure R x y) : R x y \elim r
+      | RTC-refl p => rewrite p $ refl y
+      | RTC-default r => r
+      | RTC-trans {z} xz zy => trans x z y (aux xz) (aux zy)
+  }
 
 -- 5. Определите предикат Sublist xs ys на списках, означающий "список xs является подсписком ys".
 

@@ -112,7 +112,10 @@
   => setLem make-obj obj-isProp obj-refl obj-to-=
   \where {
     \func make-obj (xs ys : A) : \Type
-      => xs = ys
+      => So (cases (dec xs ys) \with {
+        | yes a => true
+        | no n => false
+      })
 
     \func obj-refl (xs : A) : make-obj xs xs
       => idp

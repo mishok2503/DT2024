@@ -1,26 +1,77 @@
 \import Data.Bool
-\import Logic (<->)
+\import Equiv.Univalence
+\import Equiv
+\import Function.Meta
+\import Logic (<->, prop-pi)
+\import Meta
+\import Paths.Meta
 \import lect11
 
 -- 1. Докажите, что если A : \Prop, то Trunc A эквивалентен A.
 
-\func trunc-prop {A : \Prop} : Trunc A <-> A => {?}
+\func trunc-prop {A : \Prop} : Trunc A <-> A
+  => (
+    \lam t => cases t \with {
+      | trunc a => a
+    },
+    trunc
+  )
 
 -- 2. Докажите следующий закон де Моргана.
 
-\func deMorgan (A B C : \Prop) : (\Sigma A (B `Or` C)) <-> ((\Sigma A B) `Or` (\Sigma A C)) => {?}
+\func deMorgan (A B C : \Prop) : (\Sigma A (B `Or` C)) <-> ((\Sigma A B) `Or` (\Sigma A C))
+  => (
+    \lam (a, b-or-c) => cases b-or-c \with {
+      | inl b => inl (a, b)
+      | inr c => inr (a, c)
+    },
+    \lam ab-or-ac => cases ab-or-ac \with {
+      | inl (a, b) => (a, inl b)
+      | inr (a, c) => (a, inr c)
+    }
+  )
 
 -- 3. Определите элиминатор для Or через Or-rec, не используя паттерн матчинг на Or.
 
 \func Or-elim {A B : \Prop} (C : Or A B -> \Prop)
-              (f : \Pi (x : A) -> C (inl x)) (g : \Pi (y : B) -> C (inr y))
-              (p : A `Or` B) : C p => {?}
+              (f : \Pi (x : A) -> C (inl x))
+              (g : \Pi (y : B) -> C (inr y))
+              (p : A `Or` B) : C p
+  => transport C prop-pi (Or-rec {_} {_} {\Sigma (p : Or A B) (C p)}
+      (\lam p => (inl p, f p))
+      (\lam p => (inr p, g p)) p).2
 
 -- 4. Докажите, что тип утверждений является множеством.
 
-\func prop-isSet : isSet \Prop => {?}
+\func prop-isSet : isSet \Prop
+  => \lam _ _ _ _ => prop-pi
 
 -- 5. Докажите, что функции Prop1-to-Prop2 и Prop2-to-Prop1 взаимно обратны и, как следствие, что Prop1 = Prop2.
+
+\func prop121 {P : \Prop} : Prop2-to-Prop1 (Prop1-to-Prop2 P) = P
+  => Equiv-to-= \new QEquiv {
+    | f => \lam p => cases p \with {
+      | inc a => a
+    }
+    | ret => inc
+    | ret_f => \lam _ => mcases \with {
+      | inc a => idp
+    }
+    | f_sec => \lam _ => prop-pi
+  }
+
+\func prop212 {P : Prop2} : Prop1-to-Prop2 (Prop2-to-Prop1 P) = P
+  => ext $ (
+    Equiv-to-= \new QEquiv {
+      | f => \lam p => \scase \elim p \with {
+        | inc a => a
+      }
+      | ret => inc
+      | ret_f => {?}
+      | f_sec => {?}
+    },
+    {?}
+  )
 
 -- Можно сделать только одно из упражнений 6a,6b на выбор.
 -- 6a. Тип С называется когенератором, если для любых множеств A и B и любых функция f,g : A -> B верно, что если h `o` f = h `o` g для всех h : B -> C, то f = g.
